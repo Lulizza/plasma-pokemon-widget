@@ -1,0 +1,21 @@
+# pacotes gerados (vão para as Releases, não para o repositório)
+dist/
+*.plasmoid
+*.zip
+
+# cache de compilação QML
+*.qmlc
+*.jsc
+.qmlcache/
+.rcc/
+
+# editores / sistema
+.vscode/
+.idea/
+*.swp
+*~
+.directory
+.DS_Store
+
+# ferramentas locais
+.claude/

@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Luiza"
+            }
+        ],
+        "Category": "Fun and Games",
+        "Description": "Pokémon animados passeando na sua área de trabalho, usando a PokeAPI",
+        "Icon": "applications-games",
+        "Id": "org.luiza.pokemonwidget",
+        "License": "GPL-2.0+",
+        "Name": "Pokémon",
+        "Version": "1.0.0",
+        "Website": "https://github.com/Lulizza/plasma-pokemon-widget",
+        "BugReportUrl": "https://github.com/Lulizza/plasma-pokemon-widget/issues"
+    },
+    "KPackageStructure": "Plasma/Applet",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
