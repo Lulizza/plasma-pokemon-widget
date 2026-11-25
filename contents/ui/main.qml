@@ -29,6 +29,8 @@ PlasmoidItem {
     property bool loading: false
     property int attempt: 0
     property int reloadToken: 0
+    property var credits: null       // artistas do sprite PMD do selecionado
+    readonly property string creditText: spriteStyle === "pmd" ? Api.creditText(credits, shiny) : ""
     // posições dos Pokémon, para não voltarem ao início quando a lista é recriada
     property var walkerMemory: ({})
 
@@ -51,6 +53,7 @@ PlasmoidItem {
     toolTipTextFormat: Text.PlainText
     toolTipSubText: pokemon
         ? "#" + pokemon.id + " · " + pokemon.types.map(t => Api.displayName(t)).join(" / ")
+          + (creditText ? "\n" + i18n("Sprite: %1 (PMD Sprite Collab)", creditText) : "")
         : (error || "")
 
     Plasmoid.icon: "applications-games"
@@ -77,6 +80,16 @@ PlasmoidItem {
     function isShiny(name) {
         return !!shinyList && shinyList.indexOf(name) !== -1;
     }
+
+    function loadCredits() {
+        const id = pokemon ? pokemon.id : 0;
+        if (!id || spriteStyle !== "pmd") { credits = null; return; }
+        Api.fetchCredits(id, function (err, data) {
+            if (root.pokemon && root.pokemon.id === id) root.credits = data;
+        });
+    }
+    onPokemonChanged: loadCredits()
+    onSpriteStyleChanged: loadCredits()
 
     function load() {
         retryTimer.stop();
@@ -324,6 +337,17 @@ PlasmoidItem {
                         }
                     }
                 }
+            }
+
+            PlasmaComponents3.Label {
+                Layout.fillWidth: true
+                visible: Plasmoid.configuration.showName && root.creditText !== ""
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideRight
+                textFormat: Text.PlainText
+                font: Kirigami.Theme.smallFont
+                opacity: 0.6
+                text: i18n("Sprite: %1", root.creditText)
             }
         }
     }

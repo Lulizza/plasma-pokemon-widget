@@ -149,10 +149,14 @@ KCM.SimpleKCM {
                     property var info: null
                     property bool failed: false
                     readonly property bool shiny: page.isShiny(modelData)
+                    property var credits: null
+                    readonly property string creditText: page.cfg_spriteStyle === "pmd"
+                        ? Api.creditText(credits, shiny) : ""
 
                     Component.onCompleted: Api.fetchPokemon(modelData, function (err, data) {
                         entry.info = data;
                         entry.failed = !!err;
+                        if (data) Api.fetchCredits(data.id, function (e, c) { entry.credits = c; });
                     })
 
                     QQC2.RadioButton {
@@ -179,14 +183,27 @@ KCM.SimpleKCM {
                         }
                     }
 
-                    QQC2.Label {
+                    ColumnLayout {
                         Layout.preferredWidth: Kirigami.Units.gridUnit * 9
-                        elide: Text.ElideRight
-                        textFormat: Text.PlainText
-                        text: entry.info
-                            ? "#" + entry.info.id + " " + Api.displayName(entry.info.name)
-                            : Api.displayName(entry.modelData)
-                        font.bold: entry.index === page.cfg_activeIndex
+                        spacing: 0
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                            textFormat: Text.PlainText
+                            text: entry.info
+                                ? "#" + entry.info.id + " " + Api.displayName(entry.info.name)
+                                : Api.displayName(entry.modelData)
+                            font.bold: entry.index === page.cfg_activeIndex
+                        }
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            visible: entry.creditText !== ""
+                            elide: Text.ElideRight
+                            textFormat: Text.PlainText
+                            font: Kirigami.Theme.smallFont
+                            opacity: 0.6
+                            text: i18n("Sprite: %1", entry.creditText)
+                        }
                     }
 
                     QQC2.ToolButton {
@@ -247,7 +264,7 @@ KCM.SimpleKCM {
             wrapMode: Text.WordWrap
             font: Kirigami.Theme.smallFont
             opacity: 0.7
-            text: i18n("Sprites do <a href=\"https://sprites.pmdcollab.org\">PMD Sprite Collab</a> (CC BY-NC 4.0). Pokémon sem sprite PMD usam o GIF da PokeAPI.")
+            text: i18n("Sprites do <a href=\"https://sprites.pmdcollab.org\">PMD Sprite Collab</a> (CC BY-NC 4.0), com o artista de cada um indicado na lista acima. Pokémon sem sprite PMD usam o GIF da PokeAPI.")
             onLinkActivated: link => Qt.openUrlExternally(link)
         }
 

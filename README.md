@@ -83,6 +83,9 @@ contents/ui/configGeneral.qml tela de configurações
 
 - **Código:** [GPL-2.0-or-later](LICENSE).
 - **Dados:** [PokeAPI](https://pokeapi.co).
-- **Animações:** [PMD Sprite Collab](https://github.com/PMDCollab/SpriteCollab), licença [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). Os créditos de cada sprite estão no próprio repositório deles. Por causa dessa licença, os sprites **não podem ser usados comercialmente**.
+- **Animações:** [PMD Sprite Collab](https://github.com/PMDCollab/SpriteCollab), licença [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). Por causa dessa licença, os sprites **não podem ser usados comercialmente**.
+  - **Artistas de cada sprite:** o widget mostra quem fez o sprite de cada Pokémon, nas versões normal e shiny. O crédito aparece embaixo do nome, na dica do widget e na lista das configurações.
+  - Os créditos são lidos dos arquivos `credits.txt` e `credit_names.txt` do SpriteCollab. Muitos sprites normais vêm dos jogos *Pokémon Mystery Dungeon* e por isso aparecem como **CHUNSOFT**.
+  - A captura de tela acima mostra sprites de CHUNSOFT.
 - O widget não inclui nenhum sprite: eles são baixados da PokeAPI e do SpriteCollab enquanto o widget roda. A captura de tela em `docs/` mostra sprites do PMD Sprite Collab, sob a mesma licença.
 - Pokémon e os nomes dos Pokémon são marcas de Nintendo, Game Freak e The Pokémon Company. Este é um projeto de fã, gratuito e sem fins lucrativos, sem afiliação com essas empresas.

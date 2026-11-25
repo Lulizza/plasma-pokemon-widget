@@ -111,6 +111,10 @@ var aliases = {};    // busca normalizada ("25", "giratina") → nome canônico
 var pending = {};    // busca → [callbacks]
 var pmdCache = {};   // id → dados PMD | null (não existe)
 var pmdPending = {};
+var creditsCache = {};   // id → { normal: [nomes], shiny: [nomes] }
+var creditsPending = {};
+var creditNames = null;  // ID do Discord / nome → nome de exibição
+var creditNamesPending = null;
 
 var persistHook = null;
 var persistTimer = null;
@@ -154,12 +158,13 @@ function forget(names) {
 
 // Serializa só o necessário para os Pokémon em `keepNames`.
 function exportCache(keepNames) {
-    var out = { v: 1, p: {}, a: {}, m: {} };
+    var out = { v: 1, p: {}, a: {}, m: {}, c: {} };
     for (var i = 0; i < keepNames.length; ++i) {
         var data = lookup(normalize(keepNames[i]));
         if (!data) continue;
         out.p[data.name] = data;
         if (pmdCache[data.id] !== undefined) out.m[data.id] = pmdCache[data.id];
+        if (creditsCache[data.id]) out.c[data.id] = creditsCache[data.id];
     }
     for (var a in aliases) if (out.p[aliases[a]]) out.a[a] = aliases[a];
     return JSON.stringify(out);
@@ -212,6 +217,10 @@ function importCache(json) {
         }
         for (k in obj.a) if (!aliases[k]) aliases[k] = obj.a[k];
         for (k in obj.m) if (pmdCache[k] === undefined) pmdCache[k] = validPmd(obj.m[k], parseInt(k));
+        for (k in obj.c || {}) {
+            if (creditsCache[k] || !obj.c[k]) continue;
+            creditsCache[k] = { normal: cleanNames(obj.c[k].normal), shiny: cleanNames(obj.c[k].shiny) };
+        }
     } catch (e) { /* cache corrompido: ignora */ }
 }
 
@@ -430,4 +439,100 @@ function fetchPmd(id, callback) {
             try { cbs[i](err, data); } catch (e) { }
         }
     });
+}
+
+// ---------------------------------------------------------------------------
+// Créditos dos sprites PMD (a licença CC BY-NC 4.0 pede crédito aos artistas)
+// sprite/NNNN/credits.txt (normal) e sprite/NNNN/0000/0001/credits.txt (shiny):
+//   data <TAB> autor <TAB> status <TAB> licença <TAB> animações separadas por vírgula
+// O autor pode ser um nome ou um ID do Discord (<@!123>); credit_names.txt traduz.
+// ---------------------------------------------------------------------------
+
+var PMD_ROOT = "https://raw.githubusercontent.com/PMDCollab/SpriteCollab/master/";
+
+// Só texto simples, curto e sem duplicatas (vem da rede ou do cache salvo).
+function cleanNames(list) {
+    if (!Array.isArray(list)) return [];
+    var out = [];
+    for (var i = 0; i < list.length && out.length < 20; ++i) {
+        var n = typeof list[i] === "string" ? list[i].replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 60) : "";
+        if (n && out.indexOf(n) === -1) out.push(n);
+    }
+    return out;
+}
+
+function loadCreditNames(callback) {
+    if (creditNames) { callback(true); return; }
+    if (creditNamesPending) { creditNamesPending.push(callback); return; }
+    creditNamesPending = [callback];
+    request("GET", PMD_ROOT + "credit_names.txt", null, function (status, text) {
+        var ok = status === 200;
+        if (ok) {
+            creditNames = {};
+            var lines = text.split("\n");
+            for (var i = 1; i < lines.length; ++i) {   // linha 0 = cabeçalho
+                var cols = lines[i].split("\t");
+                var name = (cols[0] || "").trim();
+                if (!name) continue;
+                creditNames[name] = name;
+                if (cols[1]) creditNames[cols[1].trim()] = name;
+            }
+        }
+        var cbs = creditNamesPending;
+        creditNamesPending = null;
+        for (var j = 0; j < cbs.length; ++j) cbs[j](ok);
+    });
+}
+
+// Autores atuais ("CUR") de alguma das animações que o widget usa.
+function parseCredits(text) {
+    var names = [];
+    var lines = text.split("\n");
+    for (var i = 0; i < lines.length; ++i) {
+        var cols = lines[i].split("\t");
+        if (cols.length < 5 || cols[2].trim() !== "CUR") continue;
+        var anims = cols[4].split(",").map(function (a) { return a.trim(); });
+        if (!PMD_ANIMS.some(function (a) { return anims.indexOf(a) !== -1; })) continue;
+        var author = cols[1].trim();
+        var name = creditNames[author] || (/^<@/.test(author) ? "" : author);
+        names.push(name || "artista anônimo");
+    }
+    return cleanNames(names);
+}
+
+// callback(erro, { normal: [...], shiny: [...] }) — erro "network" não é guardado em cache
+function fetchCredits(id, callback) {
+    id = parseInt(id);
+    if (!(id > 0 && id < 10000)) { callback("notfound", null); return; }
+    if (creditsCache[id]) { callback(null, creditsCache[id]); return; }
+    if (creditsPending[id]) { creditsPending[id].push(callback); return; }
+    creditsPending[id] = [callback];
+
+    function deliver(err, data) {
+        var cbs = creditsPending[id] || [];
+        delete creditsPending[id];
+        if (data) { creditsCache[id] = data; schedulePersist(); }
+        for (var i = 0; i < cbs.length; ++i) {
+            try { cbs[i](err, data); } catch (e) { }
+        }
+    }
+
+    loadCreditNames(function (ok) {
+        if (!ok) { deliver("network", null); return; }
+        request("GET", pmdFolder(id, false) + "credits.txt", null, function (s1, t1) {
+            if (s1 === 404) { deliver("notfound", null); return; }
+            if (s1 !== 200) { deliver("network", null); return; }
+            request("GET", pmdFolder(id, true) + "credits.txt", null, function (s2, t2) {
+                if (s2 !== 200 && s2 !== 404) { deliver("network", null); return; }
+                deliver(null, { normal: parseCredits(t1), shiny: s2 === 200 ? parseCredits(t2) : [] });
+            });
+        });
+    });
+}
+
+// Texto de crédito para exibir; shiny sem crédito próprio usa o da versão normal.
+function creditText(credits, shiny) {
+    if (!credits) return "";
+    var names = shiny && credits.shiny.length ? credits.shiny : credits.normal;
+    return names.join(", ");
 }
